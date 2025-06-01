@@ -1,49 +1,88 @@
 pipeline {
     agent any
 
-    triggers {
-        githubPush()  // GitHub Webhook을 통해 push 이벤트 감지
+    environment {
+        DOCKER_IMAGE_NAME = 'seowooo3117/highfive-test'
+        DOCKERFILE_PATH = 'Dockerfile'
+        AWS_REGION = 'ap-northeast-2'
     }
 
     stages {
-        stage('🔍 준비 단계') {
+        stage('Checkout') {
             steps {
-                echo '워크스페이스 클린업 및 환경 준비 중...'
-                sh 'rm -rf * || true'
+                git branch: 'main', credentialsId: 'github-token', url: 'https://github.com/highfive-goorm/jenkins-test.git'
             }
         }
 
-        stage('🛠️ 빌드 단계') {
+        stage('Build React App') {
             steps {
-                echo '빌드 스크립트 실행 중...'
-                sh 'echo "Build 완료 (의미 없음)"'
+                sh 'npm install'
+                sh 'npm run build'
+                sh 'ls -la build'  // 결과물 확인용 (선택)
             }
         }
 
-        stage('✅ 테스트 단계') {
+        stage('Build Docker Image') {
             steps {
-                echo '테스트 코드 실행 중...'
-                sh '''
-                echo "테스트 1 통과"
-                echo "테스트 2 통과"
-                '''
+                script {
+                    def imageTag = env.BUILD_NUMBER
+                    docker.build("${DOCKER_IMAGE_NAME}:${imageTag}", "--file ${DOCKERFILE_PATH} .")
+                }
             }
         }
 
-        stage('🚀 배포 단계') {
+        stage('Verify Docker Image Content') {
             steps {
-                echo '임시 배포 로직 실행 중...'
-                sh 'echo "배포 완료 (모의)"'
+                script {
+                    def imageTag = env.BUILD_NUMBER
+                    sh "docker run --rm ${DOCKER_IMAGE_NAME}:${imageTag} ls -la /usr/share/nginx/html"
+                }
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    def imageTag = env.BUILD_NUMBER
+                    docker.withRegistry('https://index.docker.io/v1/', 'highfive_dockerhub_token') {
+                        docker.image("${DOCKER_IMAGE_NAME}:${imageTag}").push()
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to ECS') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                    script {
+                        def imageTag = env.BUILD_NUMBER
+
+                        sh """
+                            export AWS_DEFAULT_REGION=${AWS_REGION}
+                            export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME}
+                            export BUILD_NUMBER=${imageTag}
+
+                            envsubst < ecs-task-template.json > ecs-task.json
+
+                            NEW_TASK_DEF_ARN=\$(aws ecs register-task-definition \
+                              --cli-input-json file://ecs-task.json \
+                              --query 'taskDefinition.taskDefinitionArn' --output text)
+
+                            aws ecs update-service \
+                              --cluster highfive-cluster \
+                              --service highfive-frontend-service \
+                              --task-definition \$NEW_TASK_DEF_ARN \
+                              --force-new-deployment
+                        """
+                    }
+                }
             }
         }
     }
 
     post {
-        success {
-            echo '🎉 파이프라인 성공!'
-        }
-        failure {
-            echo '❌ 파이프라인 실패!'
+        always {
+            echo 'Frontend CI/CD Pipeline Complete.'
         }
     }
 }

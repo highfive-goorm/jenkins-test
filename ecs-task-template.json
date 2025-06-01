@@ -1,0 +1,29 @@
+{
+  "family": "highfive-frontend-task-def",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "highfive-frontend-container",
+      "image": "${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}",
+      "memory": 512,
+      "cpu": 256,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/highfive-frontend-task-def",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": ["EC2"],
+  "cpu": "1024",
+  "memory": "2048"
+}
