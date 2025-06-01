@@ -14,14 +14,6 @@ pipeline {
             }
         }
 
-        stage('Build React App') {
-            steps {
-                sh 'npm install'
-                sh 'npm run build'
-                sh 'ls -la build'  // 결과물 확인용 (선택)
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 script {
@@ -82,7 +74,7 @@ pipeline {
 
     post {
         always {
-            echo 'Frontend CI/CD Pipeline Complete.'
+            echo '🎉 Frontend CI/CD Pipeline Complete. 🎉'
         }
     }
 }
