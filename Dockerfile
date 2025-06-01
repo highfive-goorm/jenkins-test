@@ -4,7 +4,7 @@ WORKDIR /app
 
 # 1) 의존성 정보만 먼저 복사 → 캐시 활용
 COPY package.json package-lock.json ./
-RUN npm ci --prefer-offline --no-audit
+RUN npm install --prefer-offline --no-audit
 
 # 2) 애플리케이션 소스 전체 복사
 COPY . .
