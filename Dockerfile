@@ -4,13 +4,13 @@ WORKDIR /app
 
 # 1) 의존성 정보만 먼저 복사 → 캐시 활용
 COPY package.json package-lock.json ./
-RUN npm install --prefer-offline --no-audit
+RUN yarn install --frozen-lockfile --prefer-offline
 
 # 2) 애플리케이션 소스 전체 복사
 COPY . .
 
 # 3) React 앱 빌드 (CI=true로 불필요한 경고를 최소화)
-RUN CI=true npm run build
+RUN CI=true yarn build
 
 # Production Stage (Nginx로 정적 파일 서빙)
 FROM nginx:alpine
