@@ -18,7 +18,14 @@ pipeline {
             steps {
                 script {
                     def imageTag = env.BUILD_NUMBER
-                    docker.build("${DOCKER_IMAGE_NAME}:${imageTag}", "--file ${DOCKERFILE_PATH} .")
+                    // BuildKit 활성화 + progress=plain 하려면 prefix 추가 가능
+                    sh """
+                        export DOCKER_BUILDKIT=1
+                        docker build \
+                          --progress=plain \
+                          -t ${DOCKER_IMAGE_NAME}:${imageTag} \
+                          -f ${DOCKERFILE_PATH} .
+                    """
                 }
             }
         }
@@ -27,7 +34,12 @@ pipeline {
             steps {
                 script {
                     def imageTag = env.BUILD_NUMBER
-                    sh "docker run --rm ${DOCKER_IMAGE_NAME}:${imageTag} ls -la /usr/share/nginx/html"
+                    // 컨테이너를 잠시 띄워서 /usr/share/nginx/html/index.html 존재 여부 확인
+                    sh """
+                        echo "===== Verify Index.html in Image ====="
+                        docker run --rm ${DOCKER_IMAGE_NAME}:${imageTag} \
+                          cat /usr/share/nginx/html/index.html | head -n 1
+                    """
                 }
             }
         }
@@ -36,8 +48,11 @@ pipeline {
             steps {
                 script {
                     def imageTag = env.BUILD_NUMBER
+                    // Jenkins에 저장된 DockerHub Token ID: 'highfive_dockerhub_token'
                     docker.withRegistry('https://index.docker.io/v1/', 'highfive_dockerhub_token') {
                         docker.image("${DOCKER_IMAGE_NAME}:${imageTag}").push()
+                        sh "docker tag ${DOCKER_IMAGE_NAME}:${imageTag} ${DOCKER_IMAGE_NAME}:latest"
+                        docker.image("${DOCKER_IMAGE_NAME}:latest").push()
                     }
                 }
             }

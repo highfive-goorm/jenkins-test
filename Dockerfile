@@ -1,23 +1,14 @@
-# Build Stage (Node.js 20 기반으로 React 앱 빌드)
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-# 1) 의존성 정보만 먼저 복사 → 캐시 활용
-COPY package.json yarn.lock ./
-RUN yarn config set network-timeout 100000 --global && \
-    yarn install --frozen-lockfile --prefer-offline --verbose
-
-# 2) 애플리케이션 소스 전체 복사
-COPY . .
-
-# 3) React 앱 빌드 (CI=true로 불필요한 경고를 최소화)
-RUN CI=true yarn build
-
-# Production Stage (Nginx로 정적 파일 서빙)
+# ───────────────────────────────────────
+# 단계 없는(Multi‐stage 없이) Nginx 테스트용 Dockerfile
+# ───────────────────────────────────────
 FROM nginx:alpine
 
-# 빌드 결과물만 복사
-COPY --from=builder /app/build /usr/share/nginx/html
+# 1) static/index.html 을 Nginx 기본 웹 루트로 복사
+COPY static/index.html /usr/share/nginx/html/index.html
+
+# 2) (선택) default.conf 를 수정하고 싶다면 /etc/nginx/conf.d/default.conf 를 덮어 씁니다.
+#    예) 그냥 기본 설정으로 두려면 이 줄은 생략해도 됩니다.
+# COPY static/default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
