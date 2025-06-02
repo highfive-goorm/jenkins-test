@@ -77,7 +77,7 @@ pipeline {
 
                             aws ecs update-service \
                               --cluster highfive-cluster \
-                              --service highfive-frontend-service \
+                              --service highfive-test-service \
                               --task-definition \$NEW_TASK_DEF_ARN \
                               --force-new-deployment
                         """
