@@ -3,8 +3,9 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # 1) 의존성 정보만 먼저 복사 → 캐시 활용
-COPY package.json package-lock.json ./
-RUN yarn install --frozen-lockfile --prefer-offline
+COPY package.json yarn.lock ./
+RUN yarn config set network-timeout 100000 --global && \
+    yarn install --frozen-lockfile --prefer-offline --verbose
 
 # 2) 애플리케이션 소스 전체 복사
 COPY . .
